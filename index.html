@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ConectaCond – Sistema de gestão de condomínio. Comunicados, chamados, boletos e documentos em um só app.">
+  <title>ConectaCond – Gestão de condomínio simplificada</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="logo">
+        <img src="assets/conectacond-logo.png" alt="" width="70" height="40">
+        <span>Conecta</span><span>Cond</span>
+      </a>
+      <nav>
+        <button class="menu-toggle" type="button" aria-label="Abrir menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <ul class="nav-list">
+          <li><a href="#funcionalidades">Funcionalidades</a></li>
+          <li><a href="#sobre">Sobre</a></li>
+          <li><a href="#contato">Contato</a></li>
+          <li><a href="privacidade.html">Privacidade</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero-content">
+          <h1>Gestão do seu condomínio <span class="highlight">no celular</span></h1>
+          <p>Comunicados, chamados, boletos e documentos em um só lugar. Para síndicos e condôminos.</p>
+          <div class="hero-cta">
+            <a href="#contato" class="btn btn-primary">Fale conosco</a>
+            <a href="#funcionalidades" class="btn btn-secondary">Conhecer o app</a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <img src="assets/conectacond-logo.png" alt="ConectaCond" class="logo-hero" width="480" height="280">
+        </div>
+      </div>
+    </section>
+
+    <section id="funcionalidades" class="funcionalidades">
+      <div class="wrap">
+        <h2 class="section-title">Tudo que o condomínio precisa</h2>
+        <p class="section-subtitle">Funcionalidades pensadas para síndicos e condôminos.</p>
+        <div class="features-grid">
+          <article class="feature-card">
+            <div class="icon">📢</div>
+            <h3>Comunicados</h3>
+            <p>Envie e receba avisos importantes do condomínio em tempo real.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">🎫</div>
+            <h3>Chamados</h3>
+            <p>Abra e acompanhe solicitações de manutenção e ocorrências.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">📄</div>
+            <h3>Documentos</h3>
+            <p>Centralize atas, regulamentos e arquivos do condomínio.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">💳</div>
+            <h3>Boletos</h3>
+            <p>Consulte e acesse a segunda via de boletos pelo app.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">🔔</div>
+            <h3>Notificações</h3>
+            <p>Receba alertas de comunicados e atualizações de chamados.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">👥</div>
+            <h3>Perfis</h3>
+            <p>Síndico, subsíndico ou condômino – cada um com seu painel.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="sobre" class="sobre">
+      <div class="wrap">
+        <div class="sobre-text">
+          <h2>Sobre o ConectaCond</h2>
+          <p>O ConectaCond é um aplicativo de gestão de condomínio que aproxima síndicos e condôminos. Com foco em simplicidade e segurança, oferecemos comunicados, chamados, documentos e boletos em um único lugar, com notificações para você não perder nenhuma informação importante.</p>
+          <p>Desenvolvido para funcionar no dia a dia do condomínio, com respeito à sua privacidade e em conformidade com a LGPD.</p>
+        </div>
+        <div class="sobre-visual">
+          <img src="assets/conectacond-logo.png" alt="" class="logo-hero" width="360" height="210">
+        </div>
+      </div>
+    </section>
+
+    <section id="contato" class="cta-section">
+      <div class="wrap">
+        <h2>Pronto para conectar seu condomínio?</h2>
+        <p>Entre em contato para conhecer planos e tirar dúvidas.</p>
+        <a href="mailto:contato@conectacond.com" class="btn btn-primary">contato@conectacond.com</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span class="footer-logo"><span>Conecta</span>Cond</span>
+      <ul class="footer-links">
+        <li><a href="privacidade.html">Política de Privacidade</a></li>
+        <li><a href="mailto:contato@conectacond.com">Contato</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelector('.menu-toggle').addEventListener('click', function () {
+      document.querySelector('.nav-list').classList.toggle('is-open');
+    });
+    document.querySelectorAll('.nav-list a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        document.querySelector('.nav-list').classList.remove('is-open');
+      });
+    });
+  </script>
+</body>
+</html>

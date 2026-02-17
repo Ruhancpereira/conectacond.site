@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+  <!-- Base curva azul -->
+  <path fill="#0175C2" d="M20 85 Q60 70 100 85 V95 H20 Z"/>
+  <!-- Edif?cios cinza -->
+  <path fill="#2d3748" d="M25 85 V45 L35 55 V85 Z"/>
+  <path fill="#1a202c" d="M35 85 V35 L55 50 V85 Z"/>
+  <path fill="#2d3748" d="M55 85 V50 L75 60 V85 Z"/>
+  <!-- Sinal Wi-Fi azul (arcos) -->
+  <path fill="none" stroke="#0175C2" stroke-width="3" stroke-linecap="round" d="M60 25 Q85 45 85 58 M60 35 Q78 50 78 58 M60 45 Q71 54 71 58"/>
+</svg>
