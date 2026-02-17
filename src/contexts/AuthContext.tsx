@@ -124,13 +124,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, role: UserRole) => {
     try {
+      console.log('[ConectaCond] Login: 1/3 chamando Supabase auth...');
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) throw error;
       if (!data.session?.user) throw new Error('Erro ao fazer login');
+      console.log('[ConectaCond] Login: 2/3 auth ok, buscando perfil...');
 
       const profileUser = await fetchProfile(data.session.user.id);
       if (!profileUser) throw new Error('Perfil não encontrado');
+      console.log('[ConectaCond] Login: 3/3 perfil ok.');
 
       if (role === 'superAdmin') {
         if (profileUser.role !== 'superAdmin') {
