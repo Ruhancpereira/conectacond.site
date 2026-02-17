@@ -50,48 +50,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSessionChange = async (session: Session | null) => {
-    if (session?.user) {
-      const profileUser = await fetchProfile(session.user.id);
-      setUser(profileUser);
-    } else {
+    try {
+      if (session?.user) {
+        const profileUser = await fetchProfile(session.user.id);
+        setUser(profileUser);
+      } else {
+        setUser(null);
+      }
+    } catch {
       setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSessionChange(session);
-    });
+    let cancelled = false;
+
+    // Timeout de segurança: se Supabase não responder em 8s, mostra a tela de login
+    const safetyTimeout = window.setTimeout(() => {
+      if (cancelled) return;
+      setIsLoading(false);
+    }, 8000);
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!cancelled) handleSessionChange(session);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUser(null);
+          setIsLoading(false);
+        }
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session) {
-          const profileUser = await fetchProfile(session.user.id);
-          setUser(profileUser);
-          // TOKEN_REFRESHED: manter perfil em sync após renovação do token
-          if (event === 'TOKEN_REFRESHED') {
-            setIsLoading(false);
-            return;
+        try {
+          if (session) {
+            const profileUser = await fetchProfile(session.user.id);
+            setUser(profileUser);
+            if (event === 'TOKEN_REFRESHED') {
+              setIsLoading(false);
+              return;
+            }
+          } else {
+            setUser(null);
           }
-        } else {
+        } catch {
           setUser(null);
         }
         setIsLoading(false);
       }
     );
 
-    // Recuperar sessão ao voltar à aba (evita perda de conexão após aba em segundo plano)
     const onVisibilityChange = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         supabase.auth.getSession().then(({ data: { session } }) => {
-          handleSessionChange(session);
+          if (!cancelled) handleSessionChange(session);
         });
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
+      cancelled = true;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
