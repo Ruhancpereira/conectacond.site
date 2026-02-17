@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin – ConectaCond</title>
+  <!-- Altere a URL abaixo para o endereço do Portal em produção -->
+  <meta http-equiv="refresh" content="0; url=https://portal.conectacond.com">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .redirect-msg { text-align: center; padding: 4rem 1rem; }
+    .redirect-msg a { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="logo">
+        <img src="assets/conectacond-logo.png" alt="" width="70" height="40">
+        <span>Conecta</span><span>Cond</span>
+      </a>
+      <nav>
+        <ul class="nav-list">
+          <li><a href="index.html">Início</a></li>
+          <li><a href="admin.html">Admin</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  <main class="redirect-msg">
+    <p>Redirecionando para o Portal administrativo…</p>
+    <p>Se não for redirecionado, <a href="https://portal.conectacond.com" id="portal-link">clique aqui</a>.</p>
+  </main>
+  <script>
+    // Redirecionamento imediato (fallback se o meta refresh não funcionar)
+    (function () {
+      var portalUrl = 'https://portal.conectacond.com';
+      document.getElementById('portal-link').href = portalUrl;
+      window.location.replace(portalUrl);
+    })();
+  </script>
+</body>
+</html>
