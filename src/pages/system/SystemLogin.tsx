@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Loader2, Lock, Mail } from 'lucide-react';
+import { Shield, Loader2, Lock, Mail, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { isSupabaseConfiguredForLogin } from '@/lib/supabase';
 
 export default function SystemLogin() {
   const navigate = useNavigate();
@@ -31,11 +32,13 @@ export default function SystemLogin() {
       navigate('/system/licenses');
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
-      setError(
-        message === 'timeout'
-          ? 'A requisição demorou demais. Verifique sua conexão e tente novamente.'
-          : 'Credenciais inválidas'
-      );
+      if (message === 'timeout') {
+        setError(
+          'A requisição demorou demais. Verifique no Vercel as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY e no Supabase: Authentication → URL Configuration.'
+        );
+      } else {
+        setError(message || 'Credenciais inválidas');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -62,6 +65,18 @@ export default function SystemLogin() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {!isSupabaseConfiguredForLogin && (
+            <div className="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Supabase não configurado</p>
+                <p className="text-amber-300/90 mt-1">
+                  No Vercel, defina as variáveis de ambiente: <strong>VITE_SUPABASE_URL</strong> e{' '}
+                  <strong>VITE_SUPABASE_ANON_KEY</strong> (Settings → Environment Variables). Depois faça um novo deploy.
+                </p>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2 animate-in fade-in duration-300" style={{ animationDelay: '200ms' }}>
               <Label htmlFor="email" className="text-slate-300 font-medium">E-mail</Label>

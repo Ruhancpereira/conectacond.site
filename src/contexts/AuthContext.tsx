@@ -143,10 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let message = 'Erro ao fazer login';
       if (rawMessage.includes('Email not confirmed') || rawMessage.includes('email')) {
         message = 'E-mail não verificado. Verifique sua caixa de entrada e confirme o cadastro.';
+      } else if (
+        /failed to fetch|networkerror|load failed|network request failed/i.test(rawMessage)
+      ) {
+        message =
+          'Erro de conexão com o servidor. Verifique no Vercel as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY e no Supabase: Authentication → URL Configuration (Site URL / Redirect URLs).';
       } else if (rawMessage) {
         message = rawMessage;
       }
-      console.error('Erro no login:', error);
+      console.error('[ConectaCond Portal] Erro no login:', error);
       throw new Error(message);
     }
   };
