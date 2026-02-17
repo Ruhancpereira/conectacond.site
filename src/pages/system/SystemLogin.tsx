@@ -21,11 +21,21 @@ export default function SystemLogin() {
     setIsLoading(true);
     setError('');
 
+    const timeoutMs = 15000; // 15s
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), timeoutMs)
+    );
+
     try {
-      await login(email, password, 'superAdmin');
+      await Promise.race([login(email, password, 'superAdmin'), timeoutPromise]);
       navigate('/system/licenses');
     } catch (err) {
-      setError('Credenciais inválidas');
+      const message = err instanceof Error ? err.message : '';
+      setError(
+        message === 'timeout'
+          ? 'A requisição demorou demais. Verifique sua conexão e tente novamente.'
+          : 'Credenciais inválidas'
+      );
     } finally {
       setIsLoading(false);
     }
