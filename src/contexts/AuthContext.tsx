@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { User, UserRole } from '@/types';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -22,9 +22,12 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const GRACE_MS = 8000; // Ignorar "sessão null" nos primeiros 8s após login (evita derrubar por refresh falho)
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const lastUserSetAt = useRef(0);
 
   const fetchProfile = async (userId: string): Promise<User | null> => {
     const { data: profile, error } = await supabase
@@ -49,11 +52,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const setUserAndTrack = (value: User | null) => {
+    if (value) lastUserSetAt.current = Date.now();
+    setUser(value);
+  };
+
   const handleSessionChange = async (session: Session | null) => {
     try {
       if (session?.user) {
         const profileUser = await fetchProfile(session.user.id);
-        setUser(profileUser);
+        setUserAndTrack(profileUser);
       } else {
         setUser(null);
       }
@@ -90,19 +98,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           if (session) {
             const profileUser = await fetchProfile(session.user.id);
-            setUser(profileUser);
+            setUserAndTrack(profileUser);
             if (event === 'TOKEN_REFRESHED') {
               setIsLoading(false);
               return;
             }
           } else {
-            // Atrasar a limpeza para evitar race: signOut no login dispara null aqui;
-            // se limparmos na hora, podemos apagar o user depois do signIn concluir.
+            // Evitar derrubar logo após login: se acabamos de setar o user há menos de GRACE_MS, ignorar null
+            if (Date.now() - lastUserSetAt.current < GRACE_MS) {
+              setIsLoading(false);
+              return;
+            }
             await new Promise((r) => setTimeout(r, 600));
             const { data: { session: current } } = await supabase.auth.getSession();
             if (current?.user) {
               const profileUser = await fetchProfile(current.user.id);
-              setUser(profileUser);
+              setUserAndTrack(profileUser);
             } else {
               setUser(null);
             }
