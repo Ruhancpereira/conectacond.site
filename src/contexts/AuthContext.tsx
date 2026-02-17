@@ -96,16 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return;
             }
           } else {
-            // Evitar derrubar por falha temporária: tenta renovar o token antes de limpar
-            try {
-              const { data } = await supabase.auth.refreshSession();
-              if (data?.session?.user) {
-                const profileUser = await fetchProfile(data.session.user.id);
-                setUser(profileUser);
-              } else {
-                setUser(null);
-              }
-            } catch {
+            // Atrasar a limpeza para evitar race: signOut no login dispara null aqui;
+            // se limparmos na hora, podemos apagar o user depois do signIn concluir.
+            await new Promise((r) => setTimeout(r, 600));
+            const { data: { session: current } } = await supabase.auth.getSession();
+            if (current?.user) {
+              const profileUser = await fetchProfile(current.user.id);
+              setUser(profileUser);
+            } else {
               setUser(null);
             }
           }
@@ -137,8 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, role: UserRole) => {
     try {
-      // Garantir estado limpo antes de tentar login (evita travar se a sessão anterior caiu)
-      await supabase.auth.signOut();
+      // Só faz signOut se já houver sessão (evita atrasar o primeiro login e interferir na conclusão)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) await supabase.auth.signOut();
       console.log('[ConectaCond] Login: 1/3 chamando Supabase auth...');
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -161,6 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let message = 'Erro ao fazer login';
       if (rawMessage.includes('Email not confirmed') || rawMessage.includes('email')) {
         message = 'E-mail não verificado. Verifique sua caixa de entrada e confirme o cadastro.';
+      } else if (/invalid login credentials|invalid_credentials/i.test(rawMessage)) {
+        message = 'E-mail ou senha incorretos. Tente novamente.';
       } else if (
         /failed to fetch|networkerror|load failed|network request failed/i.test(rawMessage)
       ) {
