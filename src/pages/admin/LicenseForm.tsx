@@ -180,7 +180,7 @@ export default function LicenseForm() {
               <div className="space-y-2">
                 <Label htmlFor="condoId" className="text-slate-700 font-medium">Condomínio *</Label>
                 <Select
-                  value={watch('condoId')}
+                  value={watch('condoId') ?? ''}
                   onValueChange={(v) => setValue('condoId', v)}
                   disabled={isEditing}
                 >

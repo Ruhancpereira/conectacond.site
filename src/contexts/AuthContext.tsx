@@ -124,6 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, role: UserRole) => {
     try {
+      // Garantir estado limpo antes de tentar login (evita travar se a sessão anterior caiu)
+      await supabase.auth.signOut();
       console.log('[ConectaCond] Login: 1/3 chamando Supabase auth...');
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
