@@ -57,6 +57,50 @@ Assim o Vercel pode fazer um novo deploy (automático, se o deploy estiver ligad
 
 ---
 
+## 5. Se o deploy não iniciar automaticamente
+
+### Conferir a conexão Git no Vercel
+
+1. Acesse [vercel.com](https://vercel.com) → projeto do **site** (conectacond-site).
+2. Vá em **Settings** → **Git**.
+3. Confira:
+   - **Repository** deve ser **conectacond-site** (e não o repositório principal conectacond).
+   - **Production Branch** deve ser **main**.
+   - Não deve haver mensagem de “Disconnected” ou erro de permissão.
+4. Se o repositório estiver errado: **Disconnect** e **Import** de novo, escolhendo **conectacond-site**.
+5. Se estiver certo mas não disparar: clique em **Redeploy** no último deploy e marque **“Clear cache and redeploy”**; depois faça um novo push em conectacond-site e veja se um deploy novo aparece.
+
+### Usar Deploy Hook (disparar deploy na hora)
+
+Se mesmo assim o deploy automático não rodar, use um **Deploy Hook** para disparar o deploy após o push:
+
+1. No Vercel: **Settings** → **Git** → seção **Deploy Hooks**.
+2. Nome: ex. `Deploy no push`.
+3. Branch: **main**.
+4. Clique em **Create Hook** e **copie a URL** gerada (guarde em local seguro; quem tiver a URL pode disparar deploy).
+5. Depois de rodar `git subtree push --prefix=site site-repo main`, dispare o deploy:
+   ```bash
+   curl -X POST "COLE_A_URL_DO_HOOK_AQUI"
+   ```
+   Ou use o script (veja abaixo).
+
+### Script para publicar site e disparar deploy
+
+Na raiz do **ConectaCond** (não dentro de `site/`):
+
+```bash
+# 1. Enviar alterações do site para o GitHub (conectacond-site)
+git subtree push --prefix=site site-repo main
+
+# 2. (Opcional) Se você criou um Deploy Hook no Vercel, dispare o deploy:
+# export VERCEL_DEPLOY_HOOK="https://api.vercel.com/v1/integrations/deploy/..."
+# curl -X POST "$VERCEL_DEPLOY_HOOK"
+```
+
+Se definir a variável `VERCEL_DEPLOY_HOOK` no seu ambiente (ou no `.env` que não sobe no Git), pode usar o `curl` acima sempre após o `git subtree push`.
+
+---
+
 ## Resumo
 
 | Repositório        | Conteúdo                          | Uso                    |
