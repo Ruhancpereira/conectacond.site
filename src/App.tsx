@@ -5,9 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
-import Welcome from "./pages/Welcome";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import NewTicket from "./pages/NewTicket";
 import TicketList from "./pages/TicketList";
@@ -36,11 +33,13 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
     return <Navigate to="/" replace />;
   }
 
+  // Portal é exclusivo para gestão de licenças (superAdmin). Morador e síndico não têm acesso.
+  if (user?.role !== 'superAdmin') {
+    return <Navigate to="/" replace />;
+  }
+
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    if (user.role === 'superAdmin') {
-      return <Navigate to="/system/licenses" replace />;
-    }
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+    return <Navigate to="/system/licenses" replace />;
   }
 
   return <>{children}</>;
@@ -51,8 +50,8 @@ function AppRoutes() {
     <Routes>
       {}
       <Route path="/" element={<Navigate to="/system/login" replace />} />
-      <Route path="/login/:role" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/login/:role" element={<Navigate to="/" replace />} />
+      <Route path="/register" element={<Navigate to="/" replace />} />
 
       {}
       <Route path="/dashboard" element={

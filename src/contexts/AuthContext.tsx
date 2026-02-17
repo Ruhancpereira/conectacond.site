@@ -65,10 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (session) {
           const profileUser = await fetchProfile(session.user.id);
           setUser(profileUser);
+          // TOKEN_REFRESHED: manter perfil em sync após renovação do token
+          if (event === 'TOKEN_REFRESHED') {
+            setIsLoading(false);
+            return;
+          }
         } else {
           setUser(null);
         }
@@ -76,7 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    // Recuperar sessão ao voltar à aba (evita perda de conexão após aba em segundo plano)
+    const onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          handleSessionChange(session);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   const login = async (email: string, password: string, role: UserRole) => {
