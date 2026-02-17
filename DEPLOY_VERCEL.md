@@ -1,109 +1,64 @@
-# Publicar o site no Vercel (repositório separado)
+# Publicar o site no Vercel (conectacond.site)
 
-Como o Vercel às vezes não lista a pasta `site` no seletor de Root Directory, use um **repositório só para o site**. O conteúdo de `site/` fica na **raiz** desse repo, então no Vercel você deixa Root Directory em branco (raiz).
-
----
-
-## 1. Criar o repositório no GitHub
-
-1. Acesse [github.com/new](https://github.com/new).
-2. Nome sugerido: **conectacond-site** (ou conectacond-landing).
-3. Deixe **vazio** (sem README, sem .gitignore).
-4. Clique em **Create repository**.
+O site é publicado a partir do repositório **conectacond.site**. Para o Vercel aceitar o deploy, os commits precisam ter **você** como autor (sua conta GitHub). Por isso, o push deve ser feito **no seu computador**, no seu terminal.
 
 ---
 
-## 2. Enviar a pasta `site` para esse repositório
+## Repositório usado no Vercel
 
-No terminal, na **raiz do projeto ConectaCond** (não dentro de `site/`):
+- **GitHub:** [Ruhancpereira/conectacond.site](https://github.com/Ruhancpereira/conectacond.site)
+- **Remote no projeto:** `vercel-repo`
+
+No Vercel, conecte o projeto ao repositório **conectacond.site** (não conectacond-site com hífen). Root Directory em branco.
+
+---
+
+## Como publicar (sempre no SEU terminal)
+
+Na **raiz do projeto ConectaCond** (pasta onde está `site/`, `conectaCondFlutter/`, etc.):
 
 ```bash
-# Adicionar o novo repositório como remote (troque pelo seu usuário/repo se for diferente)
-git remote add site-repo https://github.com/Ruhancpereira/conectacond-site.git
+# 1. Garantir que está tudo commitado no ConectaCond
+git status
 
-# Enviar só a pasta site como raiz do repositório site-repo
-git subtree push --prefix=site site-repo main
+# 2. Enviar a pasta site/ para conectacond.site (autor = você)
+./scripts/deploy-site.sh
 ```
 
-Se você usar SSH:
+Ou manualmente:
 
 ```bash
-git remote add site-repo git@github.com:Ruhancpereira/conectacond-site.git
-git subtree push --prefix=site site-repo main
+git subtree push --prefix=site vercel-repo main
 ```
 
-Pronto: o repositório **conectacond-site** passa a ter na raiz os arquivos que estão em `site/` (index.html, privacidade.html, css/, assets/).
+Como o comando roda no **seu** terminal, o Git usa o **seu** `user.name` e `user.email`; os commits no conectacond.site ficam com seu nome e o Vercel aceita.
 
 ---
 
-## 3. Conectar no Vercel
+## Quando alterar o site
 
-1. Vercel → **Add New…** → **Project**.
-2. Importe o repositório **conectacond-site**.
-3. **Root Directory**: deixe em branco (raiz).
-4. **Deploy**.
-
----
-
-## 4. Quando atualizar o site
-
-Sempre que você alterar arquivos dentro de `site/` no ConectaCond e der push no **conectacond** (main), atualize o repositório do site com:
-
-```bash
-git subtree push --prefix=site site-repo main
-```
-
-Assim o Vercel pode fazer um novo deploy (automático, se o deploy estiver ligado ao repo conectacond-site).
-
----
-
-## 5. Se o deploy não iniciar automaticamente
-
-### Conferir a conexão Git no Vercel
-
-1. Acesse [vercel.com](https://vercel.com) → projeto do **site** (conectacond-site).
-2. Vá em **Settings** → **Git**.
-3. Confira:
-   - **Repository** deve ser **conectacond-site** (e não o repositório principal conectacond).
-   - **Production Branch** deve ser **main**.
-   - Não deve haver mensagem de “Disconnected” ou erro de permissão.
-4. Se o repositório estiver errado: **Disconnect** e **Import** de novo, escolhendo **conectacond-site**.
-5. Se estiver certo mas não disparar: clique em **Redeploy** no último deploy e marque **“Clear cache and redeploy”**; depois faça um novo push em conectacond-site e veja se um deploy novo aparece.
-
-### Usar Deploy Hook (disparar deploy na hora)
-
-Se mesmo assim o deploy automático não rodar, use um **Deploy Hook** para disparar o deploy após o push:
-
-1. No Vercel: **Settings** → **Git** → seção **Deploy Hooks**.
-2. Nome: ex. `Deploy no push`.
-3. Branch: **main**.
-4. Clique em **Create Hook** e **copie a URL** gerada (guarde em local seguro; quem tiver a URL pode disparar deploy).
-5. Depois de rodar `git subtree push --prefix=site site-repo main`, dispare o deploy:
+1. Edite os arquivos em **ConectaCond/site/**.
+2. No projeto ConectaCond:
    ```bash
-   curl -X POST "COLE_A_URL_DO_HOOK_AQUI"
+   git add site/
+   git commit -m "Site: descrição da alteração"
+   git push origin main
    ```
-   Ou use o script (veja abaixo).
-
-### Script para publicar site e disparar deploy
-
-Na raiz do **ConectaCond** (não dentro de `site/`):
-
-```bash
-# 1. Enviar alterações do site para o GitHub (conectacond-site)
-git subtree push --prefix=site site-repo main
-
-# 2. (Opcional) Se você criou um Deploy Hook no Vercel, dispare o deploy:
-# export VERCEL_DEPLOY_HOOK="https://api.vercel.com/v1/integrations/deploy/..."
-# curl -X POST "$VERCEL_DEPLOY_HOOK"
-```
-
-Se definir a variável `VERCEL_DEPLOY_HOOK` no seu ambiente (ou no `.env` que não sobe no Git), pode usar o `curl` acima sempre após o `git subtree push`.
+3. **No seu terminal**, publique no conectacond.site:
+   ```bash
+   ./scripts/deploy-site.sh
+   ```
+4. O Vercel faz o deploy (automático ao detectar o push, ou use Deploy Hook se configurou).
 
 ---
 
-## Resumo
+## Deploy Hook (opcional)
 
-| Repositório        | Conteúdo                          | Uso                    |
-|--------------------|-----------------------------------|------------------------|
-| conectacond        | Projeto inteiro (app, docs, site) | Desenvolvimento        |
-| conectacond-site   | Só o site (raiz = pasta site)     | Vercel (deploy do site)|
+No Vercel: **Settings** → **Git** → **Deploy Hooks** → crie um hook e copie a URL. Depois:
+
+```bash
+export VERCEL_DEPLOY_HOOK="https://api.vercel.com/v1/integrations/deploy/..."
+./scripts/deploy-site.sh
+```
+
+O script fará o push e em seguida disparará o deploy no Vercel.

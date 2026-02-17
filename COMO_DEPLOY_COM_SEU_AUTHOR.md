@@ -1,62 +1,36 @@
-# Fazer deploy do site com seu autor (para o Vercel aceitar)
+# Deploy com seu nome (para o Vercel aceitar)
 
-O Vercel pode exigir que o último commit tenha **você** como autor (sua conta GitHub). Se os commits foram feitos por outra ferramenta (ex.: Cursor/agent), siga os passos abaixo **no seu computador** para adicionar um commit com seu nome.
+O Vercel exige que o **autor do commit** seja uma conta GitHub reconhecida. Por isso o push para o repositório do site (**conectacond.site**) deve ser feito **no seu terminal**, no seu computador.
 
 ---
 
-## Passo a passo (no seu terminal)
+## O que fazer
 
-### 1. Clonar o repositório do site
+1. No projeto **ConectaCond**, na pasta raiz, rode no **seu** terminal:
+   ```bash
+   ./scripts/deploy-site.sh
+   ```
+   Ou:
+   ```bash
+   git subtree push --prefix=site vercel-repo main
+   ```
 
-```bash
-cd ~
-git clone https://github.com/Ruhancpereira/conectacond-site.git conectacond-site-deploy
-cd conectacond-site-deploy
-```
+2. O Git usará o **seu** `user.name` e `user.email`; os commits no **conectacond.site** ficarão com seu nome e o Vercel aceitará o deploy.
 
-### 2. Garantir que seu Git está com seu nome e e-mail
+3. No Vercel, conecte o projeto ao repositório **conectacond.site** (Settings → Git). Root Directory em branco.
+
+---
+
+## Conferir seu autor no Git
 
 ```bash
 git config user.name
 git config user.email
 ```
 
-Se não estiver correto (seu nome e o e-mail da conta GitHub):
+O e-mail deve ser um que esteja **vinculado à sua conta GitHub** (em github.com → Settings → Emails). Se precisar alterar:
 
 ```bash
 git config user.name "Seu Nome"
-git config user.email "seu-email@exemplo.com"
+git config user.email "seu-email@github.com"
 ```
-
-### 3. Criar um commit “vazio” com você como autor
-
-Isso gera um novo commit na branch `main` com **você** como autor, sem mudar nenhum arquivo:
-
-```bash
-git commit --allow-empty -m "Deploy: atualizar site (trigger Vercel)"
-git push origin main
-```
-
-### 4. No Vercel
-
-- O Vercel deve detectar o push e iniciar um deploy automático, ou
-- Vá em **Deployments** → no último deploy → **Redeploy** (agora o último commit é seu).
-
----
-
-## Depois disso: como publicar novas alterações do site
-
-Quando você alterar arquivos em **ConectaCond/site/** no projeto principal:
-
-1. No projeto **ConectaCond** (raiz):
-   ```bash
-   git add site/
-   git commit -m "Site: sua mensagem"
-   git push origin main
-   git subtree push --prefix=site site-repo main
-   ```
-   (O último comando envia a pasta `site` para o repositório conectacond-site.)
-
-2. Os commits do `git subtree push` ainda podem aparecer com o autor da sua máquina local. Se o Vercel reclamar de novo, repita o passo 3 acima dentro do clone de **conectacond-site**: entre na pasta, rode `git pull`, depois `git commit --allow-empty -m "Deploy"` e `git push origin main`.
-
-Ou use o **Deploy Hook** do Vercel (Settings → Git → Deploy Hooks): depois do `git subtree push`, chame a URL do hook com `curl -X POST "URL"` para disparar o deploy sem depender do autor do commit.
