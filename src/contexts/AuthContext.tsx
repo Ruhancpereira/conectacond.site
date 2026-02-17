@@ -96,7 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return;
             }
           } else {
-            setUser(null);
+            // Evitar derrubar por falha temporária: tenta renovar o token antes de limpar
+            try {
+              const { data } = await supabase.auth.refreshSession();
+              if (data?.session?.user) {
+                const profileUser = await fetchProfile(data.session.user.id);
+                setUser(profileUser);
+              } else {
+                setUser(null);
+              }
+            } catch {
+              setUser(null);
+            }
           }
         } catch {
           setUser(null);
@@ -105,10 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    // Só restaura sessão quando há session; não limpa user quando getSession() retorna null
+    // (evita derrubar o login por bug/race do cliente Supabase)
     const onVisibilityChange = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!cancelled) handleSessionChange(session);
+          if (!cancelled && session) handleSessionChange(session);
         });
       }
     };

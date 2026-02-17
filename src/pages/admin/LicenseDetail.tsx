@@ -508,19 +508,19 @@ export default function LicenseDetail() {
           </TabsContent>
 
           <TabsContent value="downloads" className="space-y-6">
-            {((license.residentEmails && license.residentEmails.length > 0) || license.syndicEmail) && (
-              <Card className="border border-slate-200 shadow-sm">
-                <CardHeader className="border-b border-slate-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                        <Mail className="h-5 w-5" />
-                        E-mails
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        Condôminos recebem link de download. Síndico recebe a chave de licença para cadastro no app.
-                      </CardDescription>
-                    </div>
+            <Card className="border border-slate-200 shadow-sm">
+              <CardHeader className="border-b border-slate-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <Mail className="h-5 w-5" />
+                      E-mails
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Condôminos recebem link de download. Síndico recebe a chave de licença para cadastro no app.
+                    </CardDescription>
+                  </div>
+                  {((license.residentEmails && license.residentEmails.length > 0) || license.syndicEmail) ? (
                     <Button
                       onClick={() => sendEmailsMutation.mutate()}
                       disabled={sendEmailsMutation.isPending}
@@ -538,17 +538,23 @@ export default function LicenseDetail() {
                         </>
                       )}
                     </Button>
+                  ) : null}
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {!license.syndicEmail && (
+                  <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                    Para o síndico receber a chave de licença por e-mail, cadastre o <strong>E-mail do Síndico</strong> no condomínio vinculado a esta licença (Condomínios → editar).
                   </div>
-                </CardHeader>
-                <CardContent className="p-4">
-                  {license.syndicEmail && (
-                    <div className="mb-4">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Síndico</p>
-                      <p className="font-mono text-sm text-slate-700 truncate">{license.syndicEmail}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Recebe a chave de licença para cadastro no app.</p>
-                    </div>
-                  )}
-                  {license.residentEmails && license.residentEmails.length > 0 && (
+                )}
+                {license.syndicEmail && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Síndico</p>
+                    <p className="font-mono text-sm text-slate-700 truncate">{license.syndicEmail}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Recebe a chave de licença para cadastro no app.</p>
+                  </div>
+                )}
+                {license.residentEmails && license.residentEmails.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
                         Condôminos ({license.residentEmails.length})
@@ -565,7 +571,6 @@ export default function LicenseDetail() {
                   )}
                 </CardContent>
               </Card>
-            )}
 
             <Card className="border-2 border-slate-200 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300">
               <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-50/80 to-white/50 backdrop-blur-sm">
