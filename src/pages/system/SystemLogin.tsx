@@ -22,7 +22,7 @@ export default function SystemLogin() {
     setIsLoading(true);
     setError('');
 
-    const timeoutMs = 15000; // 15s
+    const timeoutMs = 30000; // 30s — Supabase pode demorar (cold start, plano free)
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('timeout')), timeoutMs)
     );
@@ -34,7 +34,7 @@ export default function SystemLogin() {
       const message = err instanceof Error ? err.message : '';
       if (message === 'timeout') {
         setError(
-          'A requisição demorou demais. Verifique no Vercel as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY e no Supabase: Authentication → URL Configuration.'
+          'O servidor demorou para responder (pode ser lentidão do Supabase, ex. após inatividade). Tente novamente em alguns segundos. Se persistir, confira VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no Vercel.'
         );
       } else {
         setError(message || 'Credenciais inválidas');

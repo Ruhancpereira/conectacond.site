@@ -22,6 +22,35 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SESSION_MARKER_KEY = 'conectacond_portal_session_at';
+
+function markSessionActive() {
+  try {
+    sessionStorage.setItem(SESSION_MARKER_KEY, String(Date.now()));
+  } catch {
+    /**/
+  }
+}
+
+function clearSessionMarker() {
+  try {
+    sessionStorage.removeItem(SESSION_MARKER_KEY);
+  } catch {
+    /**/
+  }
+}
+
+function hadRecentSession(withinMs = 300000): boolean {
+  try {
+    const raw = sessionStorage.getItem(SESSION_MARKER_KEY);
+    if (!raw) return false;
+    const t = Number(raw);
+    return !Number.isNaN(t) && Date.now() - t < withinMs;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,10 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleSessionChange = async (session: Session | null) => {
     try {
       if (session?.user) {
+        markSessionActive();
         const profileUser = await fetchProfile(session.user.id);
         setUser(profileUser);
       } else {
         setUser(null);
+        clearSessionMarker();
       }
     } catch {
       setUser(null);
@@ -73,22 +104,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }, 8000);
 
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (!cancelled) handleSessionChange(session);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setUser(null);
-          setIsLoading(false);
+    async function tryRestoreSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        if (!cancelled) await handleSessionChange(session);
+        return;
+      }
+      if (!cancelled && hadRecentSession(300000)) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const { data: { session: retry } } = await supabase.auth.getSession();
+        if (!cancelled && retry?.user) {
+          await handleSessionChange(retry);
+          return;
         }
-      });
+      }
+      if (!cancelled) handleSessionChange(null);
+    }
+
+    tryRestoreSession().catch(() => {
+      if (!cancelled) {
+        setUser(null);
+        setIsLoading(false);
+      }
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         try {
           if (session) {
+            markSessionActive();
             const profileUser = await fetchProfile(session.user.id);
             setUser(profileUser);
           }
@@ -186,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    clearSessionMarker();
     await supabase.auth.signOut();
     setUser(null);
   };
