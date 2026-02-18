@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/portal",
+      "destination": "https://portal.conectacond.com/portal"
+    },
+    {
+      "source": "/portal/:path*",
+      "destination": "https://portal.conectacond.com/portal/:path*"
+    }
+  ]
+}

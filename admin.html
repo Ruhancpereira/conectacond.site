@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Admin – ConectaCond</title>
-  <!-- Altere a URL abaixo para o endereço do Portal em produção -->
-  <meta http-equiv="refresh" content="0; url=https://portal.conectacond.com">
+  <!-- Portal no mesmo domínio: /portal (evita redirect para subdomínio) -->
+  <meta http-equiv="refresh" content="0; url=/portal">
   <link rel="stylesheet" href="css/style.css">
   <style>
     .redirect-msg { text-align: center; padding: 4rem 1rem; }
@@ -30,14 +30,12 @@
   </header>
   <main class="redirect-msg">
     <p>Redirecionando para o Portal administrativo…</p>
-    <p>Se não for redirecionado, <a href="https://portal.conectacond.com" id="portal-link">clique aqui</a>.</p>
+    <p>Se não for redirecionado, <a href="/portal" id="portal-link">clique aqui</a>.</p>
   </main>
   <script>
-    // Redirecionamento imediato (fallback se o meta refresh não funcionar)
     (function () {
-      var portalUrl = 'https://portal.conectacond.com';
-      document.getElementById('portal-link').href = portalUrl;
-      window.location.replace(portalUrl);
+      document.getElementById('portal-link').href = '/portal';
+      window.location.replace('/portal');
     })();
   </script>
 </body>
