@@ -40,20 +40,22 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
 });
 
 /** Testa se o Supabase responde (força uma requisição ao servidor). */
-export async function checkSupabaseConnection(timeoutMs = 15000): Promise<{ ok: boolean; error?: string }> {
+export async function checkSupabaseConnection(
+  timeoutMs = 15000
+): Promise<{ ok: boolean; error?: string; durationMs?: number }> {
   if (!isSupabaseConfigured) {
     return { ok: false, error: 'Supabase não configurado (faltam VITE_SUPABASE_URL ou VITE_SUPABASE_ANON_KEY).' };
   }
+  const start = Date.now();
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('timeout')), timeoutMs)
   );
   try {
-    // Chamada que realmente atinge o servidor (getSession pode vir do cache)
     const p = fetch(`${supabaseUrl!.replace(/\/$/, '')}/auth/v1/health`, {
       headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseAnonKey}` },
     }).then((r) => (r.ok ? undefined : Promise.reject(new Error(`HTTP ${r.status}`))));
     await Promise.race([p, timeoutPromise]);
-    return { ok: true };
+    return { ok: true, durationMs: Date.now() - start };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg === 'timeout') {
@@ -61,14 +63,16 @@ export async function checkSupabaseConnection(timeoutMs = 15000): Promise<{ ok: 
         ok: false,
         error:
           'O servidor não respondeu a tempo. Se o projeto Supabase estiver no plano free e pausado, abra o Dashboard (app.supabase.com) e reative o projeto. Depois tente o login novamente.',
+        durationMs: Date.now() - start,
       };
     }
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
       return {
         ok: false,
         error: 'Não foi possível alcançar o Supabase (rede ou URL incorreta). Confira VITE_SUPABASE_URL no Vercel.',
+        durationMs: Date.now() - start,
       };
     }
-    return { ok: false, error: msg || 'Erro ao conectar no Supabase.' };
+    return { ok: false, error: msg || 'Erro ao conectar no Supabase.', durationMs: Date.now() - start };
   }
 }

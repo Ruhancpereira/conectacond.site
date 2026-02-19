@@ -8,9 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { isSupabaseConfiguredForLogin, checkSupabaseConnection } from '@/lib/supabase';
 
+const CONNECTION_CHECK_TIMEOUT_MS = 20000;
+const WARMUP_TIMEOUT_MS = 35000;
+const LOGIN_TIMEOUT_MS = 90000;
+
 export default function SystemLogin() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, lastLoginDiagnostic } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,16 +22,18 @@ export default function SystemLogin() {
   const [error, setError] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [lastHealthDurationMs, setLastHealthDurationMs] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfiguredForLogin) return;
     let cancelled = false;
     setConnectionStatus('checking');
-    checkSupabaseConnection(20000)
-      .then(({ ok, error: err }) => {
+    checkSupabaseConnection(CONNECTION_CHECK_TIMEOUT_MS)
+      .then((result) => {
         if (cancelled) return;
-        setConnectionStatus(ok ? 'ok' : 'fail');
-        setConnectionError(ok ? null : err ?? null);
+        setConnectionStatus(result.ok ? 'ok' : 'fail');
+        setConnectionError(result.ok ? null : result.error ?? null);
+        if (result.durationMs != null) setLastHealthDurationMs(result.durationMs);
       })
       .catch(() => {
         if (!cancelled) {
@@ -38,32 +44,25 @@ export default function SystemLogin() {
     return () => { cancelled = true; };
   }, []);
 
-  const WARMUP_TIMEOUT_MS = 35000;  // 35s para /auth/v1/health (projeto pausado pode demorar)
-  const LOGIN_TIMEOUT_MS = 90000;   // 90s para login (já temos fetch 90s no cliente; este é fallback)
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      // 1) Aquecer conexão: garante que o Supabase está acordado antes do login (evita timeout no free tier)
       if (connectionStatus !== 'ok') {
         const warm = await checkSupabaseConnection(WARMUP_TIMEOUT_MS);
+        if (warm.durationMs != null) setLastHealthDurationMs(warm.durationMs);
         if (!warm.ok) {
-          const retry = await checkSupabaseConnection(WARMUP_TIMEOUT_MS);
-          if (!retry.ok) {
-            setError(
-              'O servidor não respondeu. Se o projeto Supabase (plano free) estiver pausado, abra app.supabase.com, abra o projeto e aguarde reativar. Depois clique em "Tentar novamente".'
-            );
-            return;
-          }
+          setError(
+            'O servidor não respondeu. Veja o diagnóstico abaixo (se houver) e confira app.supabase.com se o projeto está ativo.'
+          );
+          return;
         }
         setConnectionStatus('ok');
         setConnectionError(null);
       }
 
-      // 2) Login com timeout de segurança (cliente Supabase já usa fetch 90s)
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), LOGIN_TIMEOUT_MS)
       );
@@ -73,7 +72,7 @@ export default function SystemLogin() {
       const message = err instanceof Error ? err.message : '';
       if (message === 'timeout') {
         setError(
-          'O servidor demorou para responder (até 90s). Projeto Supabase no plano free pode estar pausado: acesse app.supabase.com, abra o projeto e aguarde reativar. Depois clique em "Tentar novamente".'
+          'O servidor demorou para responder (até 90s). Veja o diagnóstico abaixo para identificar qual etapa travou.'
         );
       } else {
         setError(message || 'Credenciais inválidas');
@@ -81,6 +80,21 @@ export default function SystemLogin() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const retestConnection = () => {
+    setConnectionStatus('checking');
+    setConnectionError(null);
+    checkSupabaseConnection(CONNECTION_CHECK_TIMEOUT_MS)
+      .then((result) => {
+        setConnectionStatus(result.ok ? 'ok' : 'fail');
+        setConnectionError(result.ok ? null : result.error ?? null);
+        if (result.durationMs != null) setLastHealthDurationMs(result.durationMs);
+      })
+      .catch(() => {
+        setConnectionStatus('fail');
+        setConnectionError('Erro ao verificar conexão.');
+      });
   };
 
   return (
@@ -143,17 +157,7 @@ export default function SystemLogin() {
                   variant="outline"
                   size="sm"
                   className="mt-3 border-amber-500/50 text-amber-300 hover:bg-amber-500/20"
-                  onClick={() => {
-                    setConnectionStatus('checking');
-                    setConnectionError(null);
-                    checkSupabaseConnection(20000).then(({ ok, error: err }) => {
-                      setConnectionStatus(ok ? 'ok' : 'fail');
-                      setConnectionError(ok ? null : err ?? null);
-                    }).catch(() => {
-                      setConnectionStatus('fail');
-                      setConnectionError('Erro ao verificar conexão.');
-                    });
-                  }}
+                  onClick={retestConnection}
                 >
                   Testar conexão novamente
                 </Button>
@@ -208,10 +212,50 @@ export default function SystemLogin() {
                     variant="outline"
                     size="sm"
                     className="w-full border-red-500/50 text-red-300 hover:bg-red-500/20"
-                    onClick={() => { setError(''); handleSubmit({ preventDefault: () => {} } as React.FormEvent); }}
+                    disabled={isLoading}
+                    onClick={() => {
+                      setError('');
+                      handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+                    }}
                   >
                     Tentar novamente
                   </Button>
+                )}
+              </div>
+            )}
+
+            {(error || connectionStatus === 'fail') && (lastLoginDiagnostic || lastHealthDurationMs != null) && (
+              <div className="text-xs text-slate-400 bg-slate-800/80 border border-slate-600 p-3 rounded-lg space-y-2">
+                <p className="font-medium text-slate-300">Diagnóstico (para identificar a falha)</p>
+                {lastLoginDiagnostic && (
+                  <>
+                    <ul className="space-y-1">
+                      {lastLoginDiagnostic.steps.map((s, i) => (
+                        <li key={i}>
+                          <span className="text-slate-400">{s.step}:</span>{' '}
+                          <span className={s.durationMs > 15000 ? 'text-amber-400' : 'text-slate-300'}>
+                            {s.durationMs >= 1000 ? `${(s.durationMs / 1000).toFixed(1)}s` : `${s.durationMs}ms`}
+                          </span>
+                          {lastLoginDiagnostic.failedStep === s.step && (
+                            <span className="ml-2 text-red-400"> (falhou)</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    {lastLoginDiagnostic.failedStep && (
+                      <p className="text-amber-400/90">
+                        Etapa que falhou: <strong>{lastLoginDiagnostic.failedStep}</strong>
+                        {lastLoginDiagnostic.errorMessage && ` — ${lastLoginDiagnostic.errorMessage}`}
+                      </p>
+                    )}
+                  </>
+                )}
+                {lastHealthDurationMs != null && !lastLoginDiagnostic?.steps?.length && (
+                  <p>
+                    Último health check: <span className={lastHealthDurationMs > 15000 ? 'text-amber-400' : 'text-slate-300'}>
+                      {lastHealthDurationMs >= 1000 ? `${(lastHealthDurationMs / 1000).toFixed(1)}s` : `${lastHealthDurationMs}ms`}
+                    </span>
+                  </p>
                 )}
               </div>
             )}

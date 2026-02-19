@@ -1,7 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfiguredForLogin } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
+
+/** Diagnóstico da última tentativa de login (qual etapa demorou ou falhou). */
+export interface LoginDiagnostic {
+  steps: { step: string; durationMs: number }[];
+  failedStep?: string;
+  errorMessage?: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -9,6 +16,8 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
+  /** Último diagnóstico (tempo por etapa); preenchido após falha de login para identificar gargalo. */
+  lastLoginDiagnostic: LoginDiagnostic | null;
 }
 
 interface RegisterData {
@@ -54,6 +63,7 @@ function hadRecentSession(withinMs = 300000): boolean {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastLoginDiagnostic, setLastLoginDiagnostic] = useState<LoginDiagnostic | null>(null);
 
   const fetchProfile = async (userId: string): Promise<User | null> => {
     const { data: profile, error } = await supabase
@@ -165,20 +175,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string, role: UserRole) => {
+    setLastLoginDiagnostic(null);
+    if (!isSupabaseConfiguredForLogin) {
+      throw new Error(
+        'Supabase não configurado. No Vercel: Settings → Environment Variables → defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY e refaça o deploy.'
+      );
+    }
+    const steps: { step: string; durationMs: number }[] = [];
+    const now = () => Date.now();
     try {
-      // Só faz signOut se já houver sessão (evita atrasar o primeiro login e interferir na conclusão)
+      let t0 = now();
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) await supabase.auth.signOut();
-      console.log('[ConectaCond] Login: 1/3 chamando Supabase auth...');
+      steps.push({ step: 'getSession', durationMs: now() - t0 });
+      if (session) {
+        t0 = now();
+        await supabase.auth.signOut();
+        steps.push({ step: 'signOut', durationMs: now() - t0 });
+      }
+
+      t0 = now();
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      steps.push({ step: 'signInWithPassword', durationMs: now() - t0 });
 
       if (error) throw error;
       if (!data.session?.user) throw new Error('Erro ao fazer login');
-      console.log('[ConectaCond] Login: 2/3 auth ok, buscando perfil...');
 
+      t0 = now();
       const profileUser = await fetchProfile(data.session.user.id);
+      steps.push({ step: 'fetchProfile', durationMs: now() - t0 });
+
       if (!profileUser) throw new Error('Perfil não encontrado');
-      console.log('[ConectaCond] Login: 3/3 perfil ok.');
 
       if (role === 'superAdmin') {
         if (profileUser.role !== 'superAdmin') {
@@ -188,6 +214,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: unknown) {
       const rawMessage = error instanceof Error ? error.message : String(error);
+      const failedStep = steps.length > 0 ? steps[steps.length - 1].step : undefined;
+      setLastLoginDiagnostic({
+        steps,
+        failedStep,
+        errorMessage: rawMessage || 'Erro desconhecido',
+      });
       let message = 'Erro ao fazer login';
       if (rawMessage.includes('Email not confirmed') || rawMessage.includes('email')) {
         message = 'E-mail não verificado. Verifique sua caixa de entrada e confirme o cadastro.';
@@ -202,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         message = rawMessage;
       }
       console.error('[ConectaCond Portal] Erro no login:', error);
+      console.error('[ConectaCond Portal] Diagnóstico:', { steps, failedStep, errorMessage: rawMessage });
       throw new Error(message);
     }
   };
@@ -254,6 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        lastLoginDiagnostic,
       }}
     >
       {children}
@@ -267,6 +301,7 @@ const fallbackAuth: AuthContextType = {
   login: async () => {},
   register: async () => {},
   logout: () => {},
+  lastLoginDiagnostic: null,
 };
 
 export function useAuth() {
