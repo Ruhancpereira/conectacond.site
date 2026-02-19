@@ -13,7 +13,7 @@ if (!isSupabaseConfigured) {
 }
 
 /** Fetch com timeout longo (90s) para auth — evita falha quando Supabase free está “acordando”. */
-const AUTH_FETCH_TIMEOUT_MS = 90000;
+const AUTH_FETCH_TIMEOUT_MS = 120_000;
 function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), AUTH_FETCH_TIMEOUT_MS);

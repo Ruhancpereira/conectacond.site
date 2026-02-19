@@ -108,11 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    // Timeout de segurança: se Supabase não responder em 8s, mostra a tela de login
+    // Timeout de segurança: se Supabase não responder em 15s, mostra a tela de login
     const safetyTimeout = window.setTimeout(() => {
       if (cancelled) return;
       setIsLoading(false);
-    }, 8000);
+    }, 15000);
 
     async function tryRestoreSession() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -230,6 +230,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ) {
         message =
           'Erro de conexão com o servidor. Verifique no Vercel as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY e no Supabase: Authentication → URL Configuration (Site URL / Redirect URLs).';
+      } else if (
+        /abort|aborted|operation was aborted/i.test(rawMessage) ||
+        (error instanceof Error && error.name === 'AbortError')
+      ) {
+        message =
+          'A conexão demorou muito ou foi interrompida. Se o Supabase estiver no plano free e pausado, reative no Dashboard. Tente novamente.';
       } else if (rawMessage) {
         message = rawMessage;
       }

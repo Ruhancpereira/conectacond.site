@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Edit, Download, Share2, Copy, Ban, CheckCircle, Calendar, DollarSign, Users, Building, FileText, Plus, Power, PowerOff, Clock, Mail } from 'lucide-react';
+import { ArrowLeft, Edit, Download, Share2, Copy, Ban, CheckCircle, Calendar, DollarSign, Users, Building, FileText, Plus, Power, PowerOff, Clock, Mail, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import {
 import { SystemLayout } from '@/components/layout/SystemLayout';
 import { licenseService } from '@/services/licenseService';
 import { sendDownloadLinksToResidents } from '@/services/emailService';
+import { asaasService } from '@/services/asaasService';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -70,6 +71,12 @@ export default function LicenseDetail() {
     enabled: !!id,
   });
 
+  const { data: cobrancas = [] } = useQuery({
+    queryKey: ['licenseCobrancas', id],
+    queryFn: () => asaasService.getCobrancasByLicense(id!),
+    enabled: !!id,
+  });
+
   const suspendMutation = useMutation({
     mutationFn: () => {
       if (!id) throw new Error('ID não encontrado');
@@ -108,6 +115,18 @@ export default function LicenseDetail() {
   const sendEmailsMutation = useMutation({
     mutationFn: () => sendDownloadLinksToResidents(id!, undefined),
     onSuccess: (data) => {
+      toast.success(data.message);
+    },
+    onError: (error) => {
+      toast.error((error as Error).message);
+    },
+  });
+
+  const createCobrancaMutation = useMutation({
+    mutationFn: () => asaasService.createCobranca(id!, { sendEmail: true }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['license', id] });
+      queryClient.invalidateQueries({ queryKey: ['licenseCobrancas', id] });
       toast.success(data.message);
     },
     onError: (error) => {
@@ -388,9 +407,33 @@ export default function LicenseDetail() {
 
               <Card className="border border-slate-200 shadow-sm">
                 <CardHeader className="border-b border-slate-200 bg-slate-50/50">
-                  <CardTitle className="text-lg font-semibold">Pagamento</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold">Pagamento</CardTitle>
+                    <Button
+                      onClick={() => createCobrancaMutation.mutate()}
+                      disabled={createCobrancaMutation.isPending || license.isTrial}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {createCobrancaMutation.isPending ? (
+                        <>
+                          <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Gerando...
+                        </>
+                      ) : (
+                        <>
+                          <Receipt className="h-4 w-4 mr-2" />
+                          Gerar e enviar boleto
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-5 p-6">
+                  {license.isTrial && (
+                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                      Licenças em período de trial não geram boleto. Após o trial, use o botão acima.
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-slate-600">Status do Pagamento</p>
                     <Badge
@@ -419,6 +462,30 @@ export default function LicenseDetail() {
                     <p className="text-sm font-medium text-slate-600">Valor Mensal</p>
                     <p className="font-bold text-xl text-green-700">R$ {license.amount.toFixed(2)}</p>
                   </div>
+                  {cobrancas.length > 0 && (
+                    <div className="space-y-2 pt-3 border-t border-slate-200">
+                      <p className="text-sm font-medium text-slate-600">Boletos emitidos</p>
+                      <div className="space-y-1">
+                        {cobrancas.slice(0, 3).map((c) => (
+                          <div key={c.id} className="flex items-center justify-between text-sm">
+                            <span>{format(new Date(c.dueDate), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={c.status === 'received' ? 'default' : 'secondary'} className="text-xs">
+                                {c.status === 'received' ? 'Pago' : c.status === 'pending' ? 'Pendente' : c.status}
+                              </Badge>
+                              {(c.asaasInvoiceUrl || c.asaasBankSlipUrl) && (
+                                <Button variant="ghost" size="sm" asChild>
+                                  <a href={c.asaasInvoiceUrl || c.asaasBankSlipUrl || '#'} target="_blank" rel="noopener noreferrer">
+                                    Ver boleto
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
