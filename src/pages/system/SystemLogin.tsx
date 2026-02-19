@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Loader2, Lock, Mail, AlertCircle, Wifi, CheckCircle } from 'lucide-react';
+import { Shield, Loader2, Lock, Mail, AlertCircle, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -135,12 +135,6 @@ export default function SystemLogin() {
             <div className="text-sm text-slate-400 bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
               Verificando conexão com o Supabase...
-            </div>
-          )}
-          {isSupabaseConfiguredForLogin && connectionStatus === 'ok' && (
-            <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 flex-shrink-0" />
-              Conectado ao Supabase. Pode fazer login.
             </div>
           )}
           {isSupabaseConfiguredForLogin && connectionStatus === 'fail' && connectionError && (
