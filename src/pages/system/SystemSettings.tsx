@@ -1,10 +1,18 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Moon, Sun, Users, Mail, KeyRound, Loader2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Moon, Sun, Users, Mail, KeyRound, Loader2, Building2, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -23,9 +31,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { SystemLayout } from '@/components/layout/SystemLayout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getAllProfiles, type ProfileRow } from '@/services/userService';
+import { getAllProfiles, updateProfileCondo, type ProfileRow } from '@/services/userService';
+import { condoService } from '@/services/condoService';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -38,14 +55,53 @@ const roleLabel: Record<string, string> = {
 
 export default function SystemSettings() {
   const { theme, setTheme } = useTheme();
+  const queryClient = useQueryClient();
   const [passwordEmail, setPasswordEmail] = useState('');
   const [sendingReset, setSendingReset] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfileRow | null>(null);
 
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignProfile, setAssignProfile] = useState<ProfileRow | null>(null);
+  const [assignCondoId, setAssignCondoId] = useState<string>('');
+  const [assignUnit, setAssignUnit] = useState('');
+
+  const [addUserEmail, setAddUserEmail] = useState('');
+  const [addUserCondoId, setAddUserCondoId] = useState('');
+  const [addUserUnit, setAddUserUnit] = useState('');
+
   const { data: profiles = [], isLoading: loadingProfiles } = useQuery({
     queryKey: ['profiles-all'],
     queryFn: () => getAllProfiles(),
+  });
+
+  const { data: condos = [] } = useQuery({
+    queryKey: ['condos'],
+    queryFn: () => condoService.getAll(),
+  });
+
+  const updateCondoMutation = useMutation({
+    mutationFn: ({
+      profileId,
+      condoId,
+      unit,
+    }: {
+      profileId: string;
+      condoId: string | null;
+      unit: string | null;
+    }) => updateProfileCondo(profileId, condoId, unit),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles-all'] });
+      toast.success('Empreendimento e unidade atualizados.');
+      setAssignDialogOpen(false);
+      setAssignProfile(null);
+      setAssignCondoId('');
+      setAssignUnit('');
+      setAddUserEmail('');
+      setAddUserCondoId('');
+      setAddUserUnit('');
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Erro ao atualizar.'),
   });
 
   const handleRequestPasswordReset = async () => {
@@ -80,6 +136,38 @@ export default function SystemSettings() {
       setPasswordEmail('');
     }
     setResetDialogOpen(true);
+  };
+
+  const NONE_CONDO = '__none__';
+
+  const openAssignDialog = (profile: ProfileRow) => {
+    setAssignProfile(profile);
+    setAssignCondoId(profile.condo_id && profile.condo_id.trim() ? profile.condo_id : NONE_CONDO);
+    setAssignUnit(profile.unit ?? '');
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignSubmit = () => {
+    if (!assignProfile) return;
+    const condoId = assignCondoId === NONE_CONDO || !assignCondoId.trim() ? null : assignCondoId.trim();
+    const unit = assignUnit.trim() || null;
+    updateCondoMutation.mutate({ profileId: assignProfile.id, condoId, unit });
+  };
+
+  const handleAddUserToCondo = () => {
+    const email = addUserEmail.trim().toLowerCase();
+    if (!email) {
+      toast.error('Informe o e-mail do usuário.');
+      return;
+    }
+    const condoId = addUserCondoId.trim() || null;
+    const unit = addUserUnit.trim() || null;
+    const profile = profiles.find((p) => p.email.toLowerCase() === email);
+    if (!profile) {
+      toast.error('Nenhum usuário encontrado com este e-mail. O usuário precisa estar cadastrado no sistema.');
+      return;
+    }
+    updateCondoMutation.mutate({ profileId: profile.id, condoId, unit });
   };
 
   return (
@@ -119,10 +207,67 @@ export default function SystemSettings() {
               Usuários
             </CardTitle>
             <CardDescription>
-              Listar usuários e enviar link para redefinição de senha. Adicionar ou remover usuários requer uso do Supabase Dashboard (Authentication) ou uma Edge Function com service role.
+              Listar usuários, atribuir empreendimento e unidade, e enviar link para redefinição de senha.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 p-4 space-y-4">
+              <h4 className="font-medium flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Adicionar usuário a um empreendimento
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Informe o e-mail de um usuário já cadastrado, selecione o empreendimento e a unidade. O usuário passará a estar vinculado a esse condomínio.
+              </p>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="space-y-2 min-w-[200px]">
+                  <Label htmlFor="add-user-email">E-mail do usuário</Label>
+                  <Input
+                    id="add-user-email"
+                    type="email"
+                    placeholder="usuario@exemplo.com"
+                    value={addUserEmail}
+                    onChange={(e) => setAddUserEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 min-w-[220px]">
+                  <Label htmlFor="add-user-condo">Empreendimento</Label>
+                  <Select value={addUserCondoId} onValueChange={setAddUserCondoId}>
+                    <SelectTrigger id="add-user-condo">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {condos.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 w-[120px]">
+                  <Label htmlFor="add-user-unit">Unidade</Label>
+                  <Input
+                    id="add-user-unit"
+                    placeholder="Ex: 101"
+                    value={addUserUnit}
+                    onChange={(e) => setAddUserUnit(e.target.value)}
+                  />
+                </div>
+                <Button
+                  onClick={handleAddUserToCondo}
+                  disabled={updateCondoMutation.isPending}
+                >
+                  {updateCondoMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <UserPlus className="h-4 w-4 mr-2" />
+                  )}
+                  Vincular
+                </Button>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => openResetDialog()}>
                 <KeyRound className="h-4 w-4 mr-2" />
@@ -143,7 +288,8 @@ export default function SystemSettings() {
                       <TableHead>Nome</TableHead>
                       <TableHead>E-mail</TableHead>
                       <TableHead>Perfil</TableHead>
-                      <TableHead>Condomínio</TableHead>
+                      <TableHead>Empreendimento</TableHead>
+                      <TableHead>Unidade</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -153,8 +299,20 @@ export default function SystemSettings() {
                         <TableCell className="font-medium">{p.name}</TableCell>
                         <TableCell>{p.email}</TableCell>
                         <TableCell>{roleLabel[p.role] ?? p.role}</TableCell>
-                        <TableCell className="text-muted-foreground">{p.condo_id ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {p.condo_id ? condos.find((c) => c.id === p.condo_id)?.name ?? p.condo_id : '—'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{p.unit ?? '—'}</TableCell>
                         <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openAssignDialog(p)}
+                            className="mr-1"
+                          >
+                            <Building2 className="h-4 w-4 mr-1" />
+                            Atribuir
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -219,6 +377,62 @@ export default function SystemSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atribuir empreendimento e unidade</DialogTitle>
+            <DialogDescription>
+              {assignProfile
+                ? `Vincular ${assignProfile.name} (${assignProfile.email}) a um empreendimento e definir a unidade.`
+                : 'Selecione o empreendimento e informe a unidade.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="assign-condo">Empreendimento</Label>
+              <Select value={assignCondoId || NONE_CONDO} onValueChange={setAssignCondoId}>
+                <SelectTrigger id="assign-condo">
+                  <SelectValue placeholder="Selecione o empreendimento..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_CONDO}>Nenhum</SelectItem>
+                  {condos.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assign-unit">Unidade</Label>
+              <Input
+                id="assign-unit"
+                placeholder="Ex: 101, Bloco A"
+                value={assignUnit}
+                onChange={(e) => setAssignUnit(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAssignSubmit}
+              disabled={updateCondoMutation.isPending}
+            >
+              {updateCondoMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Building2 className="h-4 w-4 mr-2" />
+              )}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SystemLayout>
   );
 }

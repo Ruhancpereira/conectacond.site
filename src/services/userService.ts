@@ -22,3 +22,20 @@ export async function getAllProfiles(): Promise<ProfileRow[]> {
   if (error) throw error;
   return (data ?? []) as ProfileRow[];
 }
+
+export async function updateProfileCondo(
+  profileId: string,
+  condoId: string | null,
+  unit: string | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      condo_id: condoId || null,
+      unit: unit?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', profileId);
+
+  if (error) throw error;
+}
