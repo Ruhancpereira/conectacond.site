@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Loader2, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Shield, Loader2, Lock, Mail, AlertCircle, Wifi, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { isSupabaseConfiguredForLogin } from '@/lib/supabase';
+import { isSupabaseConfiguredForLogin, checkSupabaseConnection } from '@/lib/supabase';
 
 export default function SystemLogin() {
   const navigate = useNavigate();
@@ -16,25 +16,64 @@ export default function SystemLogin() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSupabaseConfiguredForLogin) return;
+    let cancelled = false;
+    setConnectionStatus('checking');
+    checkSupabaseConnection(20000)
+      .then(({ ok, error: err }) => {
+        if (cancelled) return;
+        setConnectionStatus(ok ? 'ok' : 'fail');
+        setConnectionError(ok ? null : err ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnectionStatus('fail');
+          setConnectionError('Erro ao verificar conexão.');
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const WARMUP_TIMEOUT_MS = 35000;  // 35s para /auth/v1/health (projeto pausado pode demorar)
+  const LOGIN_TIMEOUT_MS = 90000;   // 90s para login (já temos fetch 90s no cliente; este é fallback)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    const timeoutMs = 30000; // 30s — Supabase pode demorar (cold start, plano free)
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), timeoutMs)
-    );
-
     try {
+      // 1) Aquecer conexão: garante que o Supabase está acordado antes do login (evita timeout no free tier)
+      if (connectionStatus !== 'ok') {
+        const warm = await checkSupabaseConnection(WARMUP_TIMEOUT_MS);
+        if (!warm.ok) {
+          const retry = await checkSupabaseConnection(WARMUP_TIMEOUT_MS);
+          if (!retry.ok) {
+            setError(
+              'O servidor não respondeu. Se o projeto Supabase (plano free) estiver pausado, abra app.supabase.com, abra o projeto e aguarde reativar. Depois clique em "Tentar novamente".'
+            );
+            return;
+          }
+        }
+        setConnectionStatus('ok');
+        setConnectionError(null);
+      }
+
+      // 2) Login com timeout de segurança (cliente Supabase já usa fetch 90s)
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), LOGIN_TIMEOUT_MS)
+      );
       await Promise.race([login(email, password, 'superAdmin'), timeoutPromise]);
       navigate('/system/licenses');
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       if (message === 'timeout') {
         setError(
-          'O servidor demorou para responder (pode ser lentidão do Supabase, ex. após inatividade). Tente novamente em alguns segundos. Se persistir, confira VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no Vercel.'
+          'O servidor demorou para responder (até 90s). Projeto Supabase no plano free pode estar pausado: acesse app.supabase.com, abra o projeto e aguarde reativar. Depois clique em "Tentar novamente".'
         );
       } else {
         setError(message || 'Credenciais inválidas');
@@ -77,6 +116,51 @@ export default function SystemLogin() {
               </div>
             </div>
           )}
+
+          {isSupabaseConfiguredForLogin && connectionStatus === 'checking' && (
+            <div className="text-sm text-slate-400 bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+              Verificando conexão com o Supabase...
+            </div>
+          )}
+          {isSupabaseConfiguredForLogin && connectionStatus === 'ok' && (
+            <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 flex-shrink-0" />
+              Conectado ao Supabase. Pode fazer login.
+            </div>
+          )}
+          {isSupabaseConfiguredForLogin && connectionStatus === 'fail' && connectionError && (
+            <div className="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg flex items-start gap-2">
+              <Wifi className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium">Problema de conexão</p>
+                <p className="text-amber-300/90 mt-1">{connectionError}</p>
+                <p className="text-amber-300/80 mt-2 text-xs">
+                  No Vercel, confira VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY. Se o projeto Supabase estiver pausado, abra o Dashboard (app.supabase.com) para reativar.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-amber-500/50 text-amber-300 hover:bg-amber-500/20"
+                  onClick={() => {
+                    setConnectionStatus('checking');
+                    setConnectionError(null);
+                    checkSupabaseConnection(20000).then(({ ok, error: err }) => {
+                      setConnectionStatus(ok ? 'ok' : 'fail');
+                      setConnectionError(ok ? null : err ?? null);
+                    }).catch(() => {
+                      setConnectionStatus('fail');
+                      setConnectionError('Erro ao verificar conexão.');
+                    });
+                  }}
+                >
+                  Testar conexão novamente
+                </Button>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2 animate-in fade-in duration-300" style={{ animationDelay: '200ms' }}>
               <Label htmlFor="email" className="text-slate-300 font-medium">E-mail</Label>
@@ -113,9 +197,22 @@ export default function SystemLogin() {
             </div>
 
             {error && (
-              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 shadow-lg shadow-red-500/10">
-                <Shield className="h-4 w-4" />
-                {error}
+              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg space-y-2 animate-in slide-in-from-top-2 duration-300 shadow-lg shadow-red-500/10">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+                {(error.includes('demorou') || error.includes('não respondeu')) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-red-500/50 text-red-300 hover:bg-red-500/20"
+                    onClick={() => { setError(''); handleSubmit({ preventDefault: () => {} } as React.FormEvent); }}
+                  >
+                    Tentar novamente
+                  </Button>
+                )}
               </div>
             )}
 
