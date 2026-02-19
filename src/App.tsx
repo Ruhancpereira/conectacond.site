@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 import Dashboard from "./pages/Dashboard";
 import NewTicket from "./pages/NewTicket";
@@ -22,6 +23,8 @@ import LicenseDetail from "./pages/admin/LicenseDetail";
 import LicenseForm from "./pages/admin/LicenseForm";
 import DownloadLinkForm from "./pages/admin/DownloadLinkForm";
 import SystemLogin from "./pages/system/SystemLogin";
+import SystemReports from "./pages/system/SystemReports";
+import SystemSettings from "./pages/system/SystemSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -159,6 +162,17 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      <Route path="/system/reports" element={
+        <ProtectedRoute allowedRoles={['superAdmin']}>
+          <SystemReports />
+        </ProtectedRoute>
+      } />
+      <Route path="/system/settings" element={
+        <ProtectedRoute allowedRoles={['superAdmin']}>
+          <SystemSettings />
+        </ProtectedRoute>
+      } />
+
       {}
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -168,6 +182,7 @@ function AppRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <ThemeProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -181,6 +196,7 @@ const App = () => (
           <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
+      </ThemeProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

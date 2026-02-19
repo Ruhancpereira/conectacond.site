@@ -54,28 +54,26 @@ export function SystemLayout({ children }: SystemLayoutProps) {
       href: '/system/reports',
       icon: BarChart3,
       active: location.pathname.startsWith('/system/reports'),
-      disabled: true,
     },
     {
       title: 'Configurações',
       href: '/system/settings',
       icon: Settings,
       active: location.pathname.startsWith('/system/settings'),
-      disabled: true,
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex">
-      <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-slate-200/80 flex flex-col fixed h-screen shadow-xl z-10">
-        <div className="p-6 border-b border-slate-200/80 bg-gradient-to-r from-primary/5 to-transparent">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex">
+      <aside className="w-64 bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-700 flex flex-col fixed h-screen shadow-xl z-10">
+        <div className="p-6 border-b border-slate-200/80 dark:border-slate-700 bg-gradient-to-r from-primary/5 to-transparent dark:from-primary/10">
           <Link to="/system/licenses" className="flex items-center gap-3 group">
             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-110">
               <Shield className="h-7 w-7 text-white" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">ConectaCond</h1>
-              <p className="text-xs text-muted-foreground">Painel Administrativo</p>
+              <p className="text-xs text-muted-foreground dark:text-slate-400">Painel Administrativo</p>
             </div>
           </Link>
         </div>
@@ -84,23 +82,6 @@ export function SystemLayout({ children }: SystemLayoutProps) {
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = item.active;
-            
-            if (item.disabled) {
-              return (
-                <Button
-                  key={item.href}
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start gap-3 text-muted-foreground cursor-not-allowed opacity-50 transition-all duration-200"
-                  )}
-                  disabled
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.title}
-                </Button>
-              );
-            }
 
             return (
               <Link 
@@ -132,12 +113,12 @@ export function SystemLayout({ children }: SystemLayoutProps) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-200/80 bg-gradient-to-t from-slate-50/50 to-transparent">
+        <div className="p-4 border-t border-slate-200/80 dark:border-slate-700 bg-gradient-to-t from-slate-50/50 to-transparent dark:from-slate-800/50">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-auto p-3 hover:bg-primary/5 transition-all duration-200 group rounded-xl"
+                className="w-full justify-start gap-3 h-auto p-3 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all duration-200 group rounded-xl"
               >
                 <Avatar className="h-10 w-10 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all duration-200">
                   <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold shadow-md">
@@ -152,7 +133,7 @@ export function SystemLayout({ children }: SystemLayoutProps) {
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200">
+            <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200 dark:border-slate-700 dark:bg-slate-900">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{user?.name || 'Administrador'}</p>
                 <p className="text-xs text-muted-foreground">{user?.email || 'admin@conectacond.com'}</p>

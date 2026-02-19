@@ -252,6 +252,16 @@ export const licenseService = {
     return (data ?? []).map(mapContractFromDb);
   },
 
+  async getAllContracts(): Promise<Contract[]> {
+    const { data, error } = await supabase
+      .from('contracts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []).map(mapContractFromDb);
+  },
+
   async generateDownloadLink(data: {
     licenseId: string;
     condoId: string;
