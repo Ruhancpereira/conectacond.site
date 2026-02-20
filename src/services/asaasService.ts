@@ -1,7 +1,5 @@
 import { supabase } from '@/lib/supabase';
 
-const EDGE_FUNCTION_TIMEOUT_MS = 120_000; // 2 min (Asaas + Resend podem demorar)
-
 export interface LicenseCobranca {
   id: string;
   licenseId: string;
@@ -55,62 +53,40 @@ export const asaasService = {
     emailSent?: boolean;
     message: string;
   }> {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session?.access_token) {
-      throw new Error('Você precisa estar logado para gerar boletos.');
+    // Atualiza a sessão para garantir token válido (evita 401)
+    const { data: refreshData } = await supabase.auth.refreshSession();
+    const session = refreshData?.session ?? (await supabase.auth.getSession()).data?.session;
+    if (!session?.access_token) {
+      throw new Error('Sessão expirada. Faça login novamente para gerar boletos.');
     }
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    const url = `${supabaseUrl}/functions/v1/asaas-create-cobranca`;
+    const { data, error } = await supabase.functions.invoke('asaas-create-cobranca', {
+      body: {
+        licenseId,
+        sendEmail: options?.sendEmail ?? true,
+        createdBy: session.user.id,
+      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), EDGE_FUNCTION_TIMEOUT_MS);
-
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': anonKey ?? '',
-          'Authorization': `Bearer ${session.session.access_token}`,
-        },
-        body: JSON.stringify({
-          licenseId,
-          sendEmail: options?.sendEmail ?? true,
-          createdBy: session.session.user.id,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || `Erro ${res.status}`);
+    if (error) {
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        throw new Error('Sessão expirada ou inválida. Faça logout e login novamente.');
       }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      return {
-        success: data?.success ?? true,
-        asaasPaymentId: data?.asaasPaymentId,
-        invoiceUrl: data?.invoiceUrl,
-        dueDate: data?.dueDate,
-        emailSent: data?.emailSent,
-        message: data?.message ?? 'Boleto gerado com sucesso.',
-      };
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err instanceof Error) {
-        if (err.name === 'AbortError') {
-          throw new Error('A requisição demorou muito. O boleto pode ter sido criado – verifique no Asaas ou tente novamente.');
-        }
-        throw err;
-      }
-      throw err;
+      throw error;
     }
+
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
+    return {
+      success: data?.success ?? true,
+      asaasPaymentId: data?.asaasPaymentId,
+      invoiceUrl: data?.invoiceUrl,
+      dueDate: data?.dueDate,
+      emailSent: data?.emailSent,
+      message: data?.message ?? 'Boleto gerado com sucesso.',
+    };
   },
 };
