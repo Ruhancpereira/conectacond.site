@@ -108,14 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    // Timeout de segurança: se Supabase não responder em 15s, mostra a tela de login
+    // Timeout de segurança: se Supabase não responder em 8s, mostra a tela de login (evita tela travada)
     const safetyTimeout = window.setTimeout(() => {
       if (cancelled) return;
       setIsLoading(false);
-    }, 15000);
+    }, 8000);
 
+    const GET_SESSION_TIMEOUT_MS = 8000;
     async function tryRestoreSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), GET_SESSION_TIMEOUT_MS)
+      );
+      const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]).catch(() => ({ data: { session: null } })) as { data: { session: { user: unknown } | null } };
       if (session?.user) {
         if (!cancelled) await handleSessionChange(session);
         return;

@@ -10,8 +10,8 @@ import { isSupabaseConfiguredForLogin, checkSupabaseConnection } from '@/lib/sup
 import conectacondLogo from '@/assets/conectacond-logo.png';
 
 const CONNECTION_CHECK_TIMEOUT_MS = 20000;
-const WARMUP_TIMEOUT_MS = 35000;
-const LOGIN_TIMEOUT_MS = 90000;
+const WARMUP_TIMEOUT_MS = 60000;  // 60s — Supabase free pode demorar para “acordar”
+const LOGIN_TIMEOUT_MS = 120000;  // 120s — primeira requisição após inatividade pode levar 1–2 min
 
 export default function SystemLogin() {
   const navigate = useNavigate();
@@ -54,14 +54,11 @@ export default function SystemLogin() {
       if (connectionStatus !== 'ok') {
         const warm = await checkSupabaseConnection(WARMUP_TIMEOUT_MS);
         if (warm.durationMs != null) setLastHealthDurationMs(warm.durationMs);
-        if (!warm.ok) {
-          setError(
-            'O servidor não respondeu. Veja o diagnóstico abaixo (se houver) e confira app.supabase.com se o projeto está ativo.'
-          );
-          return;
+        if (warm.ok) {
+          setConnectionStatus('ok');
+          setConnectionError(null);
         }
-        setConnectionStatus('ok');
-        setConnectionError(null);
+        // Mesmo se o warmup falhar, tenta o login (Supabase free pode acordar na primeira requisição de auth)
       }
 
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -73,7 +70,7 @@ export default function SystemLogin() {
       const message = err instanceof Error ? err.message : '';
       if (message === 'timeout') {
         setError(
-          'O servidor demorou para responder (até 90s). Veja o diagnóstico abaixo para identificar qual etapa travou.'
+          'O servidor demorou para responder (até 2 min). Em projetos Supabase no plano free, a primeira requisição após inatividade pode levar 1–2 min. Tente "Tentar novamente" ou aguarde e faça login de novo.'
         );
       } else {
         setError(message || 'Credenciais inválidas');
@@ -142,6 +139,9 @@ export default function SystemLogin() {
               <div className="flex-1">
                 <p className="font-medium">Problema de conexão</p>
                 <p className="text-amber-300/90 mt-1">{connectionError}</p>
+                <p className="text-amber-300/80 mt-2 text-xs">
+                  Você pode tentar fazer login mesmo assim; na primeira vez o servidor pode levar até 1–2 min para responder (plano free).
+                </p>
                 <p className="text-amber-300/80 mt-2 text-xs">
                   No Vercel, confira VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY. Se o projeto Supabase estiver pausado, abra o Dashboard (app.supabase.com) para reativar.
                 </p>
