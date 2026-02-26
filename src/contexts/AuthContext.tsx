@@ -179,6 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const PRE_LOGIN_STEP_TIMEOUT_MS = 8000; // getSession/signOut não podem travar o login
+
   const login = async (email: string, password: string, role: UserRole) => {
     setLastLoginDiagnostic(null);
     if (!isSupabaseConfiguredForLogin) {
@@ -190,11 +192,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const now = () => Date.now();
     try {
       let t0 = now();
-      const { data: { session } } = await supabase.auth.getSession();
+      const sessionPromise = supabase.auth.getSession();
+      const stepTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('step_timeout')), PRE_LOGIN_STEP_TIMEOUT_MS)
+      );
+      let session: { user: unknown } | null = null;
+      try {
+        const result = await Promise.race([sessionPromise, stepTimeout]);
+        session = result?.data?.session ?? null;
+      } catch {
+        // getSession demorou ou falhou (ex.: logo após signOut) — segue para signIn
+        session = null;
+      }
       steps.push({ step: 'getSession', durationMs: now() - t0 });
-      if (session) {
+
+      if (session?.user) {
         t0 = now();
-        await supabase.auth.signOut();
+        try {
+          await Promise.race([
+            supabase.auth.signOut(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('step_timeout')), PRE_LOGIN_STEP_TIMEOUT_MS)
+            ),
+          ]);
+        } catch {
+          // signOut demorou — segue para signIn mesmo assim
+        }
         steps.push({ step: 'signOut', durationMs: now() - t0 });
       }
 
