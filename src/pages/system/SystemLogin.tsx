@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSupabaseConfiguredForLogin, checkSupabaseConnection } from '@/lib/supabase';
+import conectacondLogo from '@/assets/conectacond-logo.png';
 
 const CONNECTION_CHECK_TIMEOUT_MS = 20000;
 const WARMUP_TIMEOUT_MS = 35000;
@@ -106,7 +107,7 @@ export default function SystemLogin() {
       <Card className="w-full max-w-md relative z-10 shadow-2xl border-slate-700/50 bg-slate-800/80 backdrop-blur-xl animate-in zoom-in-95 duration-300 hover:shadow-3xl hover:-translate-y-1 transition-all">
         <CardHeader className="text-center space-y-6 pb-8">
           <div className="mx-auto h-20 w-20 rounded-2xl flex items-center justify-center overflow-hidden bg-white dark:bg-slate-800 shadow-xl shadow-primary/40 animate-in zoom-in-95 duration-300 hover:scale-110 transition-transform duration-300 p-2">
-            <img src="/conectacond-logo.png" alt="ConectaCond" className="h-full w-auto object-contain" />
+            <img src={conectacondLogo} alt="ConectaCond" className="h-full w-auto object-contain" />
           </div>
           <div className="space-y-2 animate-in slide-in-from-bottom-4 duration-500">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-white via-primary-foreground to-white bg-clip-text text-transparent">

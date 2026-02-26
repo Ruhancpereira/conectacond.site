@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import conectacondLogo from '@/assets/conectacond-logo.png';
 
 interface SystemLayoutProps {
   children: ReactNode;
@@ -69,7 +70,7 @@ export function SystemLayout({ children }: SystemLayoutProps) {
         <div className="p-6 border-b border-slate-200/80 dark:border-slate-700 bg-gradient-to-r from-primary/5 to-transparent dark:from-primary/10">
           <Link to="/system/licenses" className="flex items-center gap-3 group">
             <div className="h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden bg-white dark:bg-slate-800 shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-110 flex-shrink-0">
-              <img src="/conectacond-logo.png" alt="ConectaCond" className="h-8 w-auto object-contain" />
+              <img src={conectacondLogo} alt="ConectaCond" className="h-8 w-auto object-contain" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">ConectaCond</h1>
