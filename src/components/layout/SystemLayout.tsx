@@ -69,9 +69,7 @@ export function SystemLayout({ children }: SystemLayoutProps) {
       <aside className="w-64 bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-700 flex flex-col fixed h-screen shadow-xl z-10">
         <div className="p-6 border-b border-slate-200/80 dark:border-slate-700 bg-gradient-to-r from-primary/5 to-transparent dark:from-primary/10">
           <Link to="/system/licenses" className="flex items-center gap-3 group">
-            <div className="h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden bg-white dark:bg-slate-800 shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-110 flex-shrink-0">
-              <img src={conectacondLogo} alt="ConectaCond" className="h-8 w-auto object-contain" />
-            </div>
+            <img src={conectacondLogo} alt="ConectaCond" className="h-12 w-auto object-contain flex-shrink-0 transition-transform duration-300 group-hover:scale-110" />
             <div>
               <h1 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">ConectaCond</h1>
               <p className="text-xs text-muted-foreground dark:text-slate-400">Painel Administrativo</p>
