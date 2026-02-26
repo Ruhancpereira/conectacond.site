@@ -22,6 +22,7 @@ import Licenses from "./pages/admin/Licenses";
 import LicenseDetail from "./pages/admin/LicenseDetail";
 import LicenseForm from "./pages/admin/LicenseForm";
 import DownloadLinkForm from "./pages/admin/DownloadLinkForm";
+import Landing from "./pages/Landing";
 import SystemLogin from "./pages/system/SystemLogin";
 import SystemReports from "./pages/system/SystemReports";
 import SystemSettings from "./pages/system/SystemSettings";
@@ -52,7 +53,7 @@ function AppRoutes() {
   return (
     <Routes>
       {}
-      <Route path="/" element={<Navigate to="/system/login" replace />} />
+      <Route path="/" element={<Landing />} />
       <Route path="/login/:role" element={<Navigate to="/" replace />} />
       <Route path="/register" element={<Navigate to="/" replace />} />
 

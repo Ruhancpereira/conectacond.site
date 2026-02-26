@@ -15,7 +15,13 @@ const LOGIN_TIMEOUT_MS = 120000;  // 120s — primeira requisição após inativ
 
 export default function SystemLogin() {
   const navigate = useNavigate();
-  const { login, lastLoginDiagnostic } = useAuth();
+  const { login, lastLoginDiagnostic, isAuthenticated, user } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'superAdmin') {
+      navigate('/system/licenses', { replace: true });
+    }
+  }, [isAuthenticated, user?.role, navigate]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
